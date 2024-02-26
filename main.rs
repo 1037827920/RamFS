@@ -4,7 +4,7 @@ use libc::{c_char, c_int, size_t, ssize_t, O_RDONLY, O_WRONLY, O_CREAT, open, re
 use std::ffi::CStr;
 
 fn main() {
-    let filename = "/path/to/your/file.txt";
+    let filename = "file.txt";
     let fd = unsafe { open(filename.as_ptr() as *const c_char, O_RDONLY) };
     if fd == -1 {
         panic!("Failed to open file");
