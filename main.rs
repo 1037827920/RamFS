@@ -1,42 +1,32 @@
 extern crate libc;
+use libc::mount;
+use libc::c_char;
 
-use libc::{c_char, c_int, size_t, ssize_t, O_RDONLY, O_WRONLY, O_CREAT, open, read, write, close};
-use std::ffi::CStr;
 
 fn main() {
-    let filename = "/home/Downloads/DragonOS/file.txt";
-    let fd = unsafe { open(filename.as_ptr() as *const c_char, O_RDONLY) };
-    if fd == -1 {
-        panic!("Failed to open file");
+    let mut src:[c_char;10]=[0;10];
+    src[0]='/' as c_char;
+
+    let mut target:[c_char;10]=[0;10];
+    target[0]='/' as c_char;
+    target[1]='m' as c_char;
+    target[2]='n' as c_char;
+    target[3]='t' as c_char;
+
+    let mut fstype:[c_char;10]=[0;10];
+    fstype[0]='r' as c_char;
+    fstype[1]='a' as c_char;
+    fstype[2]='m' as c_char;
+    fstype[3]='f' as c_char;
+    fstype[4]='s' as c_char;
+    unsafe{
+        let c_str=std::ffi::CStr::from_ptr(src.as_ptr());
+        println!("{:?}",c_str);
     }
-
-    // Write to file
-    let mut output_buf = b"Hello, DragonOS!\0";
-    let bytes_written = unsafe { write(fd, output_buf.as_ptr() as *const libc::c_void, output_buf.len() as size_t) };
-    if bytes_written == -1 {
-        panic!("Failed to write to file");
-    }
-
-
-    // Read from file
-    let mut buf = [0u8; 1024];
-    let bytes_read = unsafe { read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len() as size_t) };
-    if bytes_read == -1 {
-        panic!("Failed to read from file");
-    }
-
-    
-
-    // Convert read bytes to string
-    let content = unsafe { std::str::from_utf8_unchecked(&buf[0..bytes_read as usize]) };
-
-    // Print read content
-    println!("Read content: {}", content);
-
-
-    // Close file
-    let status = unsafe { close(fd) };
-    if status == -1 {
-        panic!("Failed to close file");
+    unsafe{
+        let result=mount(src.as_ptr(), target.as_ptr(), fstype.as_ptr(), 0, std::ptr::null());
+        if result!=0{
+            println!("mount fs failed!");
+        }
     }
 }
