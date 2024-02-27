@@ -1,46 +1,48 @@
 extern crate libc;
 
 use std::ffi::CString;
-use std::fs::File;
-use std::io::{self, Read};
 use std::ptr;
+use std::fs::File;
+use std::io::prelude::*;
 
-fn main() -> io::Result<()> {
-    // 文件路径
-    let filename = "/path/to/your/file.txt";
-    
-    // 打开文件，返回文件描述符
-    let fd: libc::c_int;
-    let c_filename = CString::new(filename)?;
-    unsafe {
-        fd = libc::open(c_filename.as_ptr(), libc::O_RDONLY);
+fn main() {
+    // 创建文件
+    let filename = CString::new("testfile.txt").expect("CString::new failed");
+    let mode = libc::O_WRONLY | libc::O_CREAT | libc::O_TRUNC;
+    let fd = unsafe { libc::open(filename.as_ptr(), mode, 0o644) };
+    if fd < 0 {
+        panic!("Failed to create file");
     }
-    if fd == -1 {
-        return Err(io::Error::last_os_error());
+
+    // 写入文件
+    let content = "Hello, world!";
+    let content_bytes = content.as_bytes();
+    let ret = unsafe { libc::write(fd, content_bytes.as_ptr() as *const libc::c_void, content_bytes.len()) };
+    if ret < 0 {
+        panic!("Failed to write to file");
     }
-    
-    // 读取文件内容
-    let mut buf = [0u8; 4096];
-    loop {
-        let bytes_read: isize;
-        unsafe {
-            bytes_read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len());
-        }
-        if bytes_read == -1 {
-            return Err(io::Error::last_os_error());
-        } else if bytes_read == 0 {
-            break; // 文件读取完毕
-        } else {
-            // 输出文件内容
-            let slice = &buf[0..bytes_read as usize];
-            io::stdout().write_all(slice)?;
-        }
-    }
-    
+
     // 关闭文件
-    unsafe {
-        libc::close(fd);
+    unsafe { libc::close(fd) };
+
+    // 重新打开文件以读取内容
+    let filename = CString::new("testfile.txt").expect("CString::new failed");
+    let fd = unsafe { libc::open(filename.as_ptr(), libc::O_RDONLY, 0o644) };
+    if fd < 0 {
+        panic!("Failed to open file for reading");
     }
-    
-    Ok(())
+
+    // 读取文件内容
+    let mut buffer = [0u8; 128]; // 用于存储读取的内容
+    let ret = unsafe { libc::read(fd, buffer.as_mut_ptr() as *mut libc::c_void, buffer.len()) };
+    if ret < 0 {
+        panic!("Failed to read from file");
+    }
+
+    // 输出到控制台
+    let content_read = std::str::from_utf8(&buffer[..ret as usize]).expect("Failed to convert bytes to string");
+    println!("Content read from file: {}", content_read);
+
+    // 关闭文件
+    unsafe { libc::close(fd) };
 }
