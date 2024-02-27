@@ -1,32 +1,46 @@
 extern crate libc;
-use libc::mount;
-use libc::c_char;
 
+use std::ffi::CString;
+use std::fs::File;
+use std::io::{self, Read};
+use std::ptr;
 
-fn main() {
-    let mut src:[c_char;10]=[0;10];
-    src[0]='/' as c_char;
-
-    let mut target:[c_char;10]=[0;10];
-    target[0]='/' as c_char;
-    target[1]='m' as c_char;
-    target[2]='n' as c_char;
-    target[3]='t' as c_char;
-
-    let mut fstype:[c_char;10]=[0;10];
-    fstype[0]='r' as c_char;
-    fstype[1]='a' as c_char;
-    fstype[2]='m' as c_char;
-    fstype[3]='f' as c_char;
-    fstype[4]='s' as c_char;
-    unsafe{
-        let c_str=std::ffi::CStr::from_ptr(src.as_ptr());
-        println!("{:?}",c_str);
+fn main() -> io::Result<()> {
+    // 文件路径
+    let filename = "/path/to/your/file.txt";
+    
+    // 打开文件，返回文件描述符
+    let fd: libc::c_int;
+    let c_filename = CString::new(filename)?;
+    unsafe {
+        fd = libc::open(c_filename.as_ptr(), libc::O_RDONLY);
     }
-    unsafe{
-        let result=mount(src.as_ptr(), target.as_ptr(), fstype.as_ptr(), 0, std::ptr::null());
-        if result!=0{
-            println!("mount fs failed!");
+    if fd == -1 {
+        return Err(io::Error::last_os_error());
+    }
+    
+    // 读取文件内容
+    let mut buf = [0u8; 4096];
+    loop {
+        let bytes_read: isize;
+        unsafe {
+            bytes_read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len());
+        }
+        if bytes_read == -1 {
+            return Err(io::Error::last_os_error());
+        } else if bytes_read == 0 {
+            break; // 文件读取完毕
+        } else {
+            // 输出文件内容
+            let slice = &buf[0..bytes_read as usize];
+            io::stdout().write_all(slice)?;
         }
     }
+    
+    // 关闭文件
+    unsafe {
+        libc::close(fd);
+    }
+    
+    Ok(())
 }
